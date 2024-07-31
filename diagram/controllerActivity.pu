@@ -1,0 +1,12 @@
+@startuml
+
+start
+
+: Recieve request from router;
+: Handle request;
+: Interact with database;
+: Send response;
+
+end
+
+@enduml

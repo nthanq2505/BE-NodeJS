@@ -1,0 +1,30 @@
+@startuml
+
+start
+
+: Recieve request from router;
+: Check req.method;
+: Check req.url;
+if (Create) then (yes)
+    : Call handle controller;
+    else (no)
+    if (Read) then (yes)
+        : Call handle controller;
+    else (no)
+        if (Update) then (yes)
+        : Call handle controller;
+        else (no)
+        if (Delete) then (yes)
+            : Call handle controller;
+        else (no)
+            : More complex operations;
+            : Call handle controller;
+            endif
+        endif
+    endif
+endif   
+: Send response;
+
+end
+
+@enduml
