@@ -1,10 +1,23 @@
 const { handlePing, handleHello } = require('./controller');
 
 function router(req, res) {
-    if (req.method === 'GET' && req.url === '/ping' ) {
-        handlePing(req, res);
+    if (req.url === '/ping') {
+        if (req.method === 'GET') {
+            handlePing(req, res);
+        } else {
+            res.writeHead(405, { 'Content-Type': 'text/plain' });
+            res.end('Method Not Allowed');
+        }
+    } else if (req.url === '/') {
+        if (req.method === 'GET') {
+            handleHello(req, res);
+        } else {
+            res.writeHead(405, { 'Content-Type': 'text/plain' });
+            res.end('Method Not Allowed');
+        }
     } else {
-        handleHello(req, res);
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
     }
 }
 
