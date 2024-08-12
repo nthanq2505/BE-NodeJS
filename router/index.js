@@ -1,14 +1,14 @@
 const { 
-    // addTask, 
+    addTask, 
     handleNotFound 
 } = require('../controllers');
 
 const routes = {
-    // '/add-task': { 
-    //     "POST": {
-    //         controller: addTask,
-    //     }
-    // },
+    '/add-task': { 
+        "POST": {
+            controller: addTask,
+        }
+    },
 }
 
 function route(request) {
