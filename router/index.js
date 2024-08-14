@@ -1,44 +1,8 @@
-const { 
-    handleAddTask, 
-    handleUpdateTask,
-    handleGetTasksById,
-    handleDeleteTaskById,
-    handleNotFound 
-} = require('../controllers');
+const userRouter = require("./tasksRouter");
 
-const routes = {
-    '/add-task': { 
-        'POST': {
-            controller: handleAddTask,
-        }
-    },
-    '/update-task': { 
-        'PUT': {
-            controller: handleUpdateTask,
-        }
-    },
-    '/get-tasks': { 
-        'GET': {
-            controller: handleGetTasksById,
-        }
-    },
-    '/delete-task': { 
-        'DELETE': {
-            controller: handleDeleteTaskById,
-        }
-    }
-
+const router = {
+  run: function (req, res) {
+    userRouter.run(req, res);
+  }
 };
-
-function route(request) {
-    const url = request.url;
-    const method = request.method;
-    if (routes[url] && routes[url][method]) {
-        return routes[url][method].controller;
-    }
-    return handleNotFound;
-}
-
-module.exports = {
-    route
-}
+module.exports = router;

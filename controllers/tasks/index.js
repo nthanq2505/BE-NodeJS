@@ -3,7 +3,7 @@ const fs = require('fs')
 const path = "./database/tasks.json";
 
 
-//C
+//Create
 function handleAddTask(request, response) {
     const chunks = [];
     request.on('data', chunk => {
@@ -36,7 +36,7 @@ function handleAddTask(request, response) {
     });
 }
 
-//R
+//Read
 function handleGetTasksById(request, response) {
     const chunks = [];
     request.on('data', chunk => {
@@ -61,7 +61,7 @@ function handleGetTasksById(request, response) {
 }
 
 
-//U
+//Update
 function handleUpdateTask(request, response) {
     const chunks = [];
     request.on('data', chunk => {
@@ -99,7 +99,7 @@ function handleUpdateTask(request, response) {
     });
 }
 
-//D
+//Delete
 function handleDeleteTaskById(request, response) {
     const chunks = [];
     request.on('data', chunk => {
