@@ -1,4 +1,4 @@
-const taskControllers = require('./task.controller');
+const taskControllers = require('./tasks');
 
 function handleNotFound(req, res) {
     res.statusCode = 404;
