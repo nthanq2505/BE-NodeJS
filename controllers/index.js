@@ -1,4 +1,5 @@
 const taskControllers = require('./tasks');
+const userControllers = require('./users');
 
 function handleNotFound(req, res) {
     res.statusCode = 404;
@@ -7,5 +8,6 @@ function handleNotFound(req, res) {
 
 module.exports = {
     handleNotFound,
-    ...taskControllers
+    ...taskControllers,
+    ...userControllers
 };
