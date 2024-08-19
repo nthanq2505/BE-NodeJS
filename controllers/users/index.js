@@ -1,6 +1,7 @@
 const fs = require('fs')
+const httpStatusCodes = require('../httpStatusCodes');
 
-const path = "./database/user.json";
+const usersData = require("../../database/users.json");
 
 //Read
 function handleLogin(request, response) {
@@ -10,36 +11,24 @@ function handleLogin(request, response) {
     });
     request.on('end', () => {
         const reqData = JSON.parse(Buffer.concat(chunks).toString());
-        fs.readFile(path, "utf8", (error, data) => {
+        const user = usersData.find(u => u.username === reqData.username && u.password === reqData.password);
+        if (!user) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const token = `${user.username}.${user.password}`;
+        user.token = token;
+        fs.writeFile("./database/users.json", JSON.stringify(usersData), (error) => {
             if (error) {
                 console.log(error);
-                response.statusCode = 500;
-                response.end("Internal server error");
+                response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+                response.end();
                 return;
             }
-            const users = JSON.parse(data);
-            const user = users.find(u =>
-                u.username === reqData.username && u.password === reqData.password
-            )
-            if (user) {
-                var token = `${user.username}.${user.password}`;
-                user.token = token;
-                const index = users.findIndex(u => u.username === user.username);
-                users[index] = user;
-                fs.writeFile(path, JSON.stringify(users), (error) => {
-                    if (error) {
-                        console.log(error);
-                        response.statusCode = 500;
-                        response.end("Internal server error");
-                        return;
-                    }
-                });
-                response.statusCode = 200;
-                response.end(token);
-                return;
-            }
-            response.statusCode = 401
-            response.end("Invalid username or password");
+            response.statusCode = httpStatusCodes.OK;
+            response.setHeader("Content-Type", "application/json");
+            response.end(JSON.stringify(token));
         });
     });
 }

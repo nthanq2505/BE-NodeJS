@@ -1,27 +1,6 @@
 const fs = require('fs');
 const { user } = require('../../router/routes');
-
-const path = "./database/tasks.json";
-const userPath = "./database/user.json";
-
-function authenticateUser (token) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(userPath, "utf8", (error, data) => {
-            if (error) {
-                console.log(error);
-                reject(error);
-            }
-            const users = JSON.parse(data);
-            const user = users.find(u => u.token === token);
-            if (user) {
-                resolve(user.username);
-            }
-            reject("");
-        });
-    }).catch((error) => {
-        console.log(error);
-    })
-}
+const httpStatusCodes = require('../httpStatusCodes');
 
 //Create
 function handleAddTask(request, response) {
@@ -30,93 +9,111 @@ function handleAddTask(request, response) {
         chunks.push(chunk);
     });
     request.on('end', async () => {
-        const task = Buffer.concat(chunks).toString();
-        const bearerToken = request.headers.authorization.split(" ")[1];
-        const newTask = JSON.parse(task);
-        fs.readFile(userPath, "utf8", (error, data) => {
-            if (error) {
-                console.log(error);
-                response.statusCode = 500;
-                response.end();
-                return;
+        const task = JSON.parse(Buffer.concat(chunks).toString());
+        const bearerToken = request.headers.authorization && request.headers.authorization.split(" ")[1];
+        if (!bearerToken) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const user = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "user",
+                "filter": {
+                    "username": bearerToken.split(".")[0],
+                    "password": bearerToken.split(".")[1]
+                }
             }
-            const users = JSON.parse(data);
-            const user = users.find(u => u.username === bearerToken.split(".")[0] && u.password === bearerToken.split(".")[1]);
-            if (!user) {
-                response.statusCode = 401;
-                response.end("Unauthorized");
-                return;
-            } else {
-                fs.readFile(path, "utf8", (error, data) => {
-                    if (error) {
-                        console.log(error);
-                        response.statusCode = 500;
-                        response.end();
-                        return;
-                    }
-                    const tasks = JSON.parse(data);
-                    delete newTask.token;
-        
-                    newTask.owner = user.username;
-                    newTask.id = tasks.length + 1;
-                    
-                    tasks.push(newTask);
-                    fs.writeFile(path, JSON.stringify(tasks), (error) => {
-                        if (error) {
-                            console.log(error);
-                            response.statusCode = 500;
-                            response.end();
-                            return;
-                        }
-                    });
-                    response.statusCode = 200;
-                    response.end(JSON.stringify(newTask));
-                });
-            }
+            )
         });
+        if (!user) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const newTask = {
+            ...task,
+            owner: user.username
+        }
+        const res = await fetch('http://localhost:8080/api/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "record": newTask
+            })
+        });
+        if (res.status !== 201) {
+            response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+            response.end();
+            return;
+        } else {
+            response.statusCode = httpStatusCodes.CREATED;
+            response.setHeader("Content-Type", "application/json");
+            response.end(JSON.stringify(newTask));
+        }
     });
 }
 
 //Read
-function handleGetTasksById(request, response) {
+function handleGetTasksByUser(request, response) {
     const chunks = [];
     request.on('data', chunk => {
         chunks.push(chunk);
     });
-    request.on('end', () => {
-        const bearerToken = request.headers.authorization.split(" ")[1];
-        // console.log(bearerToken.split(".")[0]);
-        fs.readFile(userPath, "utf8", (error, data) => {
-            if (error) {
-                console.log(error);
-                response.statusCode = 500;
-                response.end();
-                return;
+    request.on('end', async () => {
+        const bearerToken = request.headers.authorization && request.headers.authorization.split(" ")[1];
+        if (!bearerToken) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const user = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "user",
+                "filter": {
+                    "username": bearerToken.split(".")[0],
+                    "password": bearerToken.split(".")[1]
+                }
             }
-            const users = JSON.parse(data);
-            console.log(users);
-            const user = users.find(u => u.username === bearerToken.split(".")[0] && u.password === bearerToken.split(".")[1]);
-            console.log(user);
-            if (!user) {
-                response.statusCode = 401;
-                response.end("Unauthorized");
-                return;
-            }else{
-                fs.readFile(path, "utf8", (error, data) => {
-                    if (error) {
-                        console.log(error);
-                        response.statusCode = 500;
-                        response.end();
-                        return;
-                    }
-                    const tasks = JSON.parse(data);
-        
-                    const userTasks = tasks.filter(t => t.owner === user.username);
-                    response.statusCode = 200;
-                    response.end(JSON.stringify(userTasks));
-                });
-            }
+            )
         });
+        if (!user) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const tasks = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "filter": {
+                    "owner": user.username
+                }
+            }
+            )
+        });
+        if (tasks.length === 0) {
+            response.statusCode = httpStatusCodes.NOT_FOUND;
+            response.end("Not Found");
+            return;
+        }
+        response.statusCode = httpStatusCodes.OK;
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify(tasks));
     });
 }
 
@@ -127,35 +124,74 @@ function handleUpdateTask(request, response) {
     request.on('data', chunk => {
         chunks.push(chunk);
     });
-    request.on('end', () => {
+    request.on('end', async () => {
         const task = Buffer.concat(chunks).toString();
-        fs.readFile(path, "utf8", (error, data) => {
-            if (error) {
-                console.log(error);
-                response.statusCode = 500;
-                response.end();
-                return;
-            }
-            const updatedTask = JSON.parse(task);
-            const tasks = JSON.parse(data);
-            
-            const index = tasks.findIndex(t => t.id === updatedTask.id);
+        const updatedTask = JSON.parse(task);
+        const bearerToken = request.headers.authorization && request.headers.authorization.split(" ")[1];
+        if (!bearerToken) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
 
-            for (const key in updatedTask) {
-                tasks[index][key] = updatedTask[key];
-            }
-
-            fs.writeFile(path, JSON.stringify(tasks), (error) => {
-                if (error) {
-                    console.log(error);
-                    response.statusCode = 500;
-                    response.end();
-                    return;
+        const user = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "user",
+                "filter": {
+                    "username": bearerToken.split(".")[0],
+                    "password": bearerToken.split(".")[1]
                 }
-            });
-            response.statusCode = 200;
-            response.end(JSON.stringify(updatedTask));
+            }
+            )
         });
+        if (!user) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const tasks = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "filter": {
+                    "owner": user.username
+                }
+            })
+        });
+        if (tasks.length === 0) {
+            response.statusCode = httpStatusCodes.NOT_FOUND;
+            response.end("Not Found");
+            return;
+        }
+        console.log(updatedTask);
+        const res = await fetch('http://localhost:8080/api/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "filter": {
+                    "id": updatedTask.id
+                },
+                "update": updatedTask
+            })
+        });
+        if (res.status !== 200) {
+            response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+            response.end();
+            return;
+        }
+        response.statusCode = httpStatusCodes.OK;
+        response.setHeader("Content-Type", "application/json");
+        response.end(JSON.stringify(updatedTask));
     });
 }
 
@@ -165,37 +201,75 @@ function handleDeleteTaskById(request, response) {
     request.on('data', chunk => {
         chunks.push(chunk);
     });
-    request.on('end', () => {
+    request.on('end', async () => {
         const taskId = JSON.parse(Buffer.concat(chunks).toString()).taskId;
-        fs.readFile(path, "utf8", (error, data) => {
-            if (error) {
-                console.log(error);
-                response.statusCode = 500;
-                response.end();
-                return;
-            }
-            const tasks = JSON.parse(data);
-
-            const index = tasks.findIndex(t => t.id === taskId);
-            tasks.splice(index, 1);
-
-            fs.writeFile(path, JSON.stringify(tasks), (error) => {
-                if (error) {
-                    console.log(error);
-                    response.statusCode = 500;
-                    response.end();
-                    return;
+        const bearerToken = request.headers.authorization && request.headers.authorization.split(" ")[1];
+        if (!bearerToken) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const user = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "user",
+                "filter": {
+                    "username": bearerToken.split(".")[0],
+                    "password": bearerToken.split(".")[1]
                 }
-            });
-            response.statusCode = 200;
-            response.end(`Task with id ${taskId} was deleted`);
+            }
+            )
         });
+        if (!user) {
+            response.statusCode = httpStatusCodes.UNAUTHORIZED;
+            response.end("Unauthorized");
+            return;
+        }
+        const tasks = await fetch('http://localhost:8080/api/read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "filter": {
+                    "owner": user.username
+                }
+            })
+        });
+        if (tasks.length === 0) {
+            response.statusCode = httpStatusCodes.NOT_FOUND;
+            response.end("Not Found");
+            return;
+        }
+        const res = await fetch('http://localhost:8080/api/delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                "collection": "task",
+                "filter": {
+                    "id": taskId
+                }
+            })
+        });
+        if (res.status !== 200) {
+            response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+            response.end();
+            return;
+        }
+        response.statusCode = httpStatusCodes.OK;
+        response.end();
     });
 }
 
 module.exports = {
     handleAddTask,
     handleUpdateTask,
-    handleGetTasksById,
+    handleGetTasksByUser,
     handleDeleteTaskById
 };
