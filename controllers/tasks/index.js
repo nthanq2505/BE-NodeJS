@@ -85,8 +85,7 @@ function handleGetTasksByUser(request, response) {
                     "username": bearerToken.split(".")[0],
                     "password": bearerToken.split(".")[1]
                 }
-            }
-            )
+            })
         });
         if (!user) {
             response.statusCode = httpStatusCodes.UNAUTHORIZED;

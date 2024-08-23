@@ -1,21 +1,24 @@
 module.exports = {
     task: {
         addTask: { 
-            value: "/add-task",
+            value: "/api/add-task",
         },
         updateTask: { 
-            value: "/update-task",
+            value: "/api/update-task",
         },
         getTasks: { 
-            value: "/get-tasks",
+            value: "/api/get-tasks",
         },
         deleteTask: { 
-            value: "/delete-task",
+            value: "/api/delete-task",
         }
     },
     user: {
         login: { 
-            value: "/login",
+            value: "/api/login",
         },
+        register: { 
+            value: "/api/register",
+        }
     }
 };

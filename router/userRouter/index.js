@@ -6,6 +6,7 @@ const userController = require("../../controllers/index.js");
 const userRouter = {
   run(req, res) {
     routerMethods.post(req, res, routes.user.login.value, userController.handleLogin);
+    routerMethods.post(req, res, routes.user.register.value, userController.handleRegister);
   },
 };
 
