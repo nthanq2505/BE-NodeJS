@@ -1,8 +1,9 @@
+const { httpStatusCodes } = require('./helper');
 const taskControllers = require('./tasks');
 const userControllers = require('./users');
 
 function handleNotFound(req, res) {
-    res.statusCode = 404;
+    res.statusCode = httpStatusCodes.NOT_FOUND;
     res.end('Not Found')
 }
 

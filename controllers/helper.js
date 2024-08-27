@@ -1,14 +1,3 @@
-const httpStatusCodes = {
-  OK: 200,
-  CREATED: 201,
-  NO_CONTENT: 204,
-  BAD_REQUEST: 400,
-  UNAUTHORIZED: 401,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  INTERNAL_SERVER_ERROR: 500,
-};
-
 const secretKey = "secretKey";
 
 function encodeToken(data) {
@@ -19,9 +8,26 @@ function decodeToken(token) {
   return Buffer.from(token, "base64").toString();
 }
 
+function generateId() {
+  return Date.now().toString();
+}
+
+const getDataFromRequest = (req) => {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk.toString();
+    });
+    req.on('end', () => {
+      resolve(JSON.parse(body));
+    });
+  });
+};
+
 module.exports = {
-  httpStatusCodes,
   secretKey,
   encodeToken,
   decodeToken,
+  generateId,
+  getDataFromRequest
 };
