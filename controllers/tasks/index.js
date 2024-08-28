@@ -2,231 +2,212 @@ const {
   apiRoot,
   httpStatusCodes,
   httpMethods,
-  collectionNames
-} = require('../../utils/constants')
+  collectionNames,
+  databaseName,
+  uriMongo,
+} = require("../../utils/constants");
 const {
   secretKey,
   decodeToken,
   generateId,
-  getDataFromRequest
-} = require('../helper')
+  getDataFromRequest,
+  authorizeUserFromRequest,
+  getCollection,
+} = require("../helper");
 
-async function handleAddTask (request, response) {
+const usersCollection = getCollection(collectionNames.USER);
+const tasksCollection = getCollection(collectionNames.TASK);
+
+async function handleAddTask(req, res) {
   try {
-    const body = await getDataFromRequest(request)
-    const { task, username } = body
-
-    const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
-
-    if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: No token provided')
-      return
+    const body = await getDataFromRequest(req);
+    const { task } = body;
+    
+    const username = authorizeUserFromRequest(req);
+    if (!username) {
+      res.statusCode = httpStatusCodes.UNAUTHORIZED;
+      res.end("Unauthorized: No token provided");
+      return;
     }
-    const [userId, secretKeyFromToken] = decodeToken(bearerToken).split(':')
+    const user = await usersCollection.findOne({ username: username });
 
-    if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
+    if (!user) {
+      res.statusCode = httpStatusCodes.UNAUTHORIZED;
+      res.end("Unauthorized: Invalid user");
+      return;
     }
 
     const newTask = {
       ...task,
-      ownerId: userId,
-      id: generateId()
-    }
+      ownerId: user._id,
+    };
 
-    const result = await fetch(`${apiRoot}/api/create`, {
-      method: httpMethods.POST,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        record: newTask
-      })
-    })
+    const result = await tasksCollection.insertOne(newTask);
 
-    if (result.status !== httpStatusCodes.CREATED) {
-      response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-      response.end('Failed to create task')
-      return
-    }
-
-    response.statusCode = httpStatusCodes.CREATED
-    response.setHeader('Content-Type', 'application/json')
-    response.end(JSON.stringify(newTask))
+    res.statusCode = httpStatusCodes.CREATED;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(result));
   } catch (error) {
-    console.error('Error handling task creation:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling task creation:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleGetTasksByUser (request, response) {
+async function handleGetTasksByUser(req, res) {
   try {
     const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
+      req.headers.authorization && req.headers.authorization.split(" ")[1];
     if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: No token provided')
-      return
+      res.statusCode = httpStatusCodes.UNAUTHORIZED;
+      res.end("Unauthorized: No token provided");
+      return;
     }
 
-    const [idUser, secretKeyFromToken] = decodeToken(bearerToken).split(':')
+    const [username, secretKeyFromToken] = decodeToken(bearerToken).split(":");
 
     if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
+      res.statusCode = httpStatusCodes.UNAUTHORIZED;
+      res.end("Unauthorized: Invalid token");
+      return;
     }
 
-    const tasksResponse = await fetch(`${apiRoot}/api/read`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        filter: { ownerId: string(idUser) }
-      })
-    })
+    const user = await usersCollection.findOne({username});
+    if (!user) {
+      res.statusCode = httpStatusCodes.UNAUTHORIZED;
+      res.end("Unauthorized: Invalid user");
+      return;
+    }
 
-    const tasks = await tasksResponse.json()
+    const tasks = await tasksCollection.find({ ownerId: user._id }).toArray();
 
-    response.statusCode = httpStatusCodes.OK
-    response.setHeader('Content-Type', 'application/json')
-    response.end(JSON.stringify(tasks))
+    res.statusCode = httpStatusCodes.OK;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(tasks));
   } catch (error) {
-    console.error('Error handling get tasks by user:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling get tasks by user:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleUpdateTask (request, response) {
+async function handleUpdateTask(req, res) {
   try {
-    const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
+    // const bearerToken =
+    //   req.headers.authorization && req.headers.authorization.split(" ")[1];
 
-    if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized')
-      return
-    }
+    // if (!bearerToken) {
+    //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
+    //   res.end("Unauthorized");
+    //   return;
+    // }
 
-    const secretKeyFromToken = decodeToken(bearerToken).split(':')[1]
-    if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
-    }
+    // const secretKeyFromToken = decodeToken(bearerToken).split(":")[1];
+    // if (secretKeyFromToken !== secretKey) {
+    //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
+    //   res.end("Unauthorized: Invalid token");
+    //   return;
+    // }
 
-    const updateTask = await getDataFromRequest(request)
+    // const updateTask = await getDataFromRequest(req);
 
-    const updateResponse = await fetch(`${apiRoot}/api/update`, {
-      method: httpMethods.PUT,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        filter: { id: updateTask.id },
-        update: updateTask
-      })
-    })
+    // const updateResponse = await fetch(`${apiRoot}/api/update`, {
+    //   method: httpMethods.PUT,
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify({
+    //     collection: collectionNames.TASK,
+    //     filter: { id: updateTask.id },
+    //     update: updateTask,
+    //   }),
+    // });
 
-    if (updateResponse.status !== httpStatusCodes.NO_CONTENT) {
-      response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-      response.end('Internal Server Error')
-      return
-    }
+    // if (updateResponse.status !== httpStatusCodes.NO_CONTENT) {
+    //   res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    //   res.end("Internal Server Error");
+    //   return;
+    // }
 
-    response.statusCode = httpStatusCodes.NO_CONTENT
-    response.end()
+    res.statusCode = httpStatusCodes.NO_CONTENT;
+    res.end();
   } catch (error) {
-    console.error('Error handling update task:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling update task:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleDeleteTaskById (request, response) {
-  const body = await getDataFromRequest(request)
-  taskId = body.id
-  
-  const bearerToken =
-    request.headers.authorization && request.headers.authorization.split(' ')[1]
-  if (!bearerToken) {
-    response.statusCode = httpStatusCodes.UNAUTHORIZED
-    response.end('Unauthorized')
-    return
-  }
+async function handleDeleteTaskById(req, res) {
+  // const body = await getDataFromRequest(req);
+  // taskId = body.id;
 
-  if(!taskId){
-    response.statusCode = httpStatusCodes.NOT_FOUND
-    response.end('Invalid task id')
-    return
-  }
+  // const bearerToken =
+  //   req.headers.authorization && req.headers.authorization.split(" ")[1];
+  // if (!bearerToken) {
+  //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
+  //   res.end("Unauthorized");
+  //   return;
+  // }
 
-  const secretKeyFromToken = decodeToken(bearerToken).split(':')[1]
-  if (secretKeyFromToken !== secretKey) {
-    response.statusCode = httpStatusCodes.UNAUTHORIZED
-    response.end('Unauthorized: Invalid token')
-    return
-  }
+  // if (!taskId) {
+  //   res.statusCode = httpStatusCodes.NOT_FOUND;
+  //   res.end("Invalid task id");
+  //   return;
+  // }
 
-  const taskResponse = await fetch(`${apiRoot}/api/read`, {
-    method: httpMethods.POST,
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      collection: 'task',
-      filter: {
-        id: taskId
-      }
-    })
-  })
+  // const secretKeyFromToken = decodeToken(bearerToken).split(":")[1];
+  // if (secretKeyFromToken !== secretKey) {
+  //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
+  //   res.end("Unauthorized: Invalid token");
+  //   return;
+  // }
 
-  const task = await taskResponse.json()
+  // const taskResponse = await fetch(`${apiRoot}/api/read`, {
+  //   method: httpMethods.POST,
+  //   headers: {
+  //     "Content-Type": "application/json",
+  //   },
+  //   body: JSON.stringify({
+  //     collection: "task",
+  //     filter: {
+  //       id: taskId,
+  //     },
+  //   }),
+  // });
 
+  // const task = await taskResponse.json();
 
-  if (task.length === 0) {
-    response.statusCode = httpStatusCodes.NOT_FOUND
-    response.end()
-    return
-  }
+  // if (task.length === 0) {
+  //   res.statusCode = httpStatusCodes.NOT_FOUND;
+  //   res.end();
+  //   return;
+  // }
 
-  const res = await fetch(`${apiRoot}/api/delete`, {
-    method: httpMethods.DELETE,
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      collection: 'task',
-      filter: {
-        id: taskId
-      }
-    })
-  })
-  if (res.status !== httpStatusCodes.NO_CONTENT) {
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end()
-    return
-  }
-  response.statusCode = httpStatusCodes.NO_CONTENT
-  response.end()
+  // const res = await fetch(`${apiRoot}/api/delete`, {
+  //   method: httpMethods.DELETE,
+  //   headers: {
+  //     "Content-Type": "application/json",
+  //   },
+  //   body: JSON.stringify({
+  //     collection: "task",
+  //     filter: {
+  //       id: taskId,
+  //     },
+  //   }),
+  // });
+  // if (res.status !== httpStatusCodes.NO_CONTENT) {
+  //   res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+  //   res.end();
+  //   return;
+  // }
+  res.statusCode = httpStatusCodes.NO_CONTENT;
+  res.end();
 }
 
 module.exports = {
   handleAddTask,
   handleUpdateTask,
   handleGetTasksByUser,
-  handleDeleteTaskById
-}
+  handleDeleteTaskById,
+};

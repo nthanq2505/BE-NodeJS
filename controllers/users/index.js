@@ -1,111 +1,74 @@
-const { encodeToken, generateId, getDataFromRequest } = require('../helper')
+const { encodeToken, getDataFromRequest, getCollection } = require("../helper");
 const {
   apiRoot,
   httpStatusCodes,
-  httpMethods
-} = require('../../utils/constants')
+  httpMethods,
+  databaseName,
+  uriMongo,
+  collectionNames,
+} = require("../../utils/constants");
 
-async function handleLogin (request, response) {
+const usersCollection = getCollection(collectionNames.USER);
+
+async function handleLogin(req, res) {
   try {
-    const reqData = await getDataFromRequest(request)
-    
-    const userResponse = await fetch(`${apiRoot}/api/read`, {
-      method: httpMethods.POST,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: 'user',
-        filter: {
-          username: reqData.username,
-          password: reqData.password
-        }
-      })
-    })
+    const reqData = await getDataFromRequest(req);
 
-    const user = await userResponse.json()
-    
-
-    if (user.length === 0) {
-      response.statusCode = httpStatusCodes.NOT_FOUND
-      response.end()
-      return
+    const user = await usersCollection.findOne(reqData);
+    if (!user) {
+      res.statusCode = httpStatusCodes.NOT_FOUND;
+      res.end("404 Not Found");
+      return;
     }
 
-    response.statusCode = httpStatusCodes.OK
-    response.setHeader('Content-Type', 'application/json')
-    response.end(
+    res.statusCode = httpStatusCodes.OK;
+    res.setHeader("Content-Type", "application/json");
+    res.end(
       JSON.stringify({
-        username: user[0].username,
-        token: user[0].token
+        username: user.username,
+        token: user.token,
       })
-    )
+    );
   } catch (error) {
-    console.error('Login failed:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('500 Internal Server Error')
+    console.error("Login failed:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("500 Internal Server Error");
   }
 }
 
-async function handleRegister (req, res) {
+async function handleRegister(req, res) {
   try {
-    const reqData = await getDataFromRequest(req)
+    const reqData = await getDataFromRequest(req);
 
-    const userRes = await fetch(`${apiRoot}/api/read`, {
-      method: httpMethods.POST,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: 'user',
-        filter: {
-          username: reqData.username
-        }
-      })
-    })
+    //check exist user
+    const user = await usersCollection.findOne({username: reqData.username});
 
-    const user = await userRes.json()
-
-    if (user.length > 0) {
-      res.statusCode = httpStatusCodes.CONFLICT
-      res.end()
-      return
+    if(user){
+      res.statusCode = httpStatusCodes.CONFLICT;
+      res.end("Username already exist");
+      return;
     }
 
-    const newId = generateId()
-    const token = encodeToken(newId)
+    const token = encodeToken(reqData.username);
     const newUser = {
-      id: newId,
+      ...reqData,
       token: token,
-      ...reqData
-    }
-
-    const databaseRes = await fetch(`${apiRoot}/create`, {
-      method: httpMethods.POST,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: 'user',
-        record: newUser
-      })
-    })
-
-    if (databaseRes.status !== httpStatusCodes.CREATED) {
-      res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-      res.end()
-    } else {
-      res.statusCode = httpStatusCodes.CREATED
-      res.end()
+    };
+    
+    const result = await usersCollection.insertOne(newUser)
+    if(result.insertedId){
+      res.statusCode = httpStatusCodes.CREATED;
+      res.end();
+      return;
     }
   } catch (error) {
-    console.error('Error during registration:', error)
-    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    res.end('500 Internal Server Error')
+    console.error("Error during registration:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("500 Internal Server Error");
   }
 }
 
 module.exports = {
   handleLogin,
-  handleRegister
-}
+  handleRegister,
+};
