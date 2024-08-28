@@ -1,118 +1,111 @@
-const fs = require("fs");
-const { httpStatusCodes, secretKey, encodeToken, decodeToken } = require("../helper");
+const { encodeToken, generateId, getDataFromRequest } = require('../helper')
+const {
+  apiRoot,
+  httpStatusCodes,
+  httpMethods
+} = require('../../utils/constants')
 
-function handleLogin(req, res) {
-  const chunks = [];
-  req.on("data", (chunk) => {
-    chunks.push(chunk);
-  });
-  req.on("end", async () => {
-    const reqData = JSON.parse(Buffer.concat(chunks).toString());
-
-    const userRes = await fetch("http://localhost:8080/api/read", {
-      method: "POST",
+async function handleLogin (request, response) {
+  try {
+    const reqData = await getDataFromRequest(request)
+    
+    const userResponse = await fetch(`${apiRoot}/api/read`, {
+      method: httpMethods.POST,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        collection: "user",
+        collection: 'user',
         filter: {
           username: reqData.username,
-          password: reqData.password,
-        },
-      }),
-    });
-    const user = await userRes.json();
-    console.log(user);
+          password: reqData.password
+        }
+      })
+    })
+
+    const user = await userResponse.json()
+    
+
     if (user.length === 0) {
-      res.statusCode = httpStatusCodes.NOT_FOUND;
-      res.end();
-      return;
+      response.statusCode = httpStatusCodes.NOT_FOUND
+      response.end()
+      return
     }
 
-    const token = encodeToken(user[0].id);
-    console.log(decodeToken(token));
-
-    const databaseRes = await fetch("http://localhost:8080/api/update", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        collection: "user",
-        filter: {
-          username: reqData.username,
-          password: reqData.password,
-        },
-        update: user[0],
-      }),
-    });
-    if (databaseRes.status !== 200) {
-      res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
-      res.end();
-      return;
-    } else {
-      res.statusCode = httpStatusCodes.OK;
-      res.setHeader("Content-Type", "application/json");
-      res.end(
-        JSON.stringify({
-          username: user[0].username,
-          token: token,
-        })
-      );
-    }
-  });
+    response.statusCode = httpStatusCodes.OK
+    response.setHeader('Content-Type', 'application/json')
+    response.end(
+      JSON.stringify({
+        username: user[0].username,
+        token: user[0].token
+      })
+    )
+  } catch (error) {
+    console.error('Login failed:', error)
+    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
+    response.end('500 Internal Server Error')
+  }
 }
 
-function handleRegister(req, res) {
-  const chunks = [];
-  req.on("data", (chunk) => {
-    chunks.push(chunk);
-  });
-  req.on("end", async () => {
-    const reqData = JSON.parse(Buffer.concat(chunks).toString());
+async function handleRegister (req, res) {
+  try {
+    const reqData = await getDataFromRequest(req)
 
-    const userRes = await fetch("http://localhost:8080/api/read", {
-      method: "POST",
+    const userRes = await fetch(`${apiRoot}/api/read`, {
+      method: httpMethods.POST,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        collection: "user",
+        collection: 'user',
         filter: {
-          username: reqData.username,
-        },
-      }),
-    });
-    const user = await userRes.json();
+          username: reqData.username
+        }
+      })
+    })
+
+    const user = await userRes.json()
+
     if (user.length > 0) {
-      res.statusCode = httpStatusCodes.CONFLICT;
-      res.end();
-      return;
+      res.statusCode = httpStatusCodes.CONFLICT
+      res.end()
+      return
     }
 
-    const databaseRes = await fetch("http://localhost:8080/api/create", {
-      method: "POST",
+    const newId = generateId()
+    const token = encodeToken(newId)
+    const newUser = {
+      id: newId,
+      token: token,
+      ...reqData
+    }
+
+    const databaseRes = await fetch(`${apiRoot}/create`, {
+      method: httpMethods.POST,
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        collection: "user",
-        record: reqData,
-      }),
-    });
+        collection: 'user',
+        record: newUser
+      })
+    })
+
     if (databaseRes.status !== httpStatusCodes.CREATED) {
-      res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
-      res.end();
-      return;
+      res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
+      res.end()
     } else {
-      res.statusCode = httpStatusCodes.CREATED;
-      res.end();
+      res.statusCode = httpStatusCodes.CREATED
+      res.end()
     }
-  });
+  } catch (error) {
+    console.error('Error during registration:', error)
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
+    res.end('500 Internal Server Error')
+  }
 }
 
 module.exports = {
   handleLogin,
-  handleRegister,
-};
+  handleRegister
+}

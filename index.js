@@ -1,22 +1,20 @@
 const { createServer } = require('node:http');
-const router = require('./router');
+const router = require('./routers');
 
 const hostname = '127.0.0.1';
 const port = 3000;
 
-const server = createServer((req, res) => {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Allow all origins, or specify a particular origin
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+const server = createServer((request, response) => {
+    response.setHeader('Access-Control-Allow-Origin', '*'); 
+    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        res.writeHead(204); // No content
-        res.end();
+    if (request.method === 'OPTIONS') {
+        response.writeHead(204);
+        response.end();
         return;
     }
-    router.run(req, res);
+    router.run(request, response);
 });
 
 server.listen(port, hostname, () => {
