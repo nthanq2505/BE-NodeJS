@@ -18,7 +18,5 @@ function getCollection(collectionName) {
 module.exports = {
   encodeToken,
   decodeToken,
-  // getDataFromRequest,
-  // authorizeUserFromRequest,
   getCollection,
 };

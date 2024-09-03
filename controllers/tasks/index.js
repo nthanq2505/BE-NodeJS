@@ -1,29 +1,34 @@
 const {
   httpStatusCodes,
   collectionNames,
-  // CAN USE IN FUTURE
-  // apiRoot,
-  // httpMethods,
-  // databaseName,
-  // uriMongo,
 } = require("../../utils/constants");
-const { decodeToken, getCollection } = require("../../helpers");
+const { 
+  getCollection 
+} = require("../../helpers");
 
-const usersCollection = getCollection(collectionNames.USER);
 const tasksCollection = getCollection(collectionNames.TASK);
 
 async function handleAddTask(req, res) {
   try {
     const { task } = req.body;
     const user = req.user;
-    console.log("user", user);
 
-    const newTask = {
+    if (!task) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
+
+    if (!task.name || !task.isDone) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
+
+    const result = await tasksCollection.insertOne({
       ...task,
       ownerId: user._id,
-    };
-
-    const result = await tasksCollection.insertOne(newTask);
+    });
 
     res.statusCode = httpStatusCodes.CREATED;
     res.setHeader("Content-Type", "application/json");
@@ -38,8 +43,9 @@ async function handleAddTask(req, res) {
 async function handleGetTasksByUser(req, res) {
   try {
     const user = req.user;
-
-    const tasks = await tasksCollection.find({ ownerId: user._id }).toArray();
+    const tasks = await tasksCollection.find({ 
+      ownerId: user._id 
+    }).toArray();
 
     res.statusCode = httpStatusCodes.OK;
     res.setHeader("Content-Type", "application/json");

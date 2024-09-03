@@ -27,7 +27,6 @@ const collectionNames = {
 
 const secretKey = "secretKey";
 
-
 module.exports = { 
   apiRoot, 
   httpMethods, 

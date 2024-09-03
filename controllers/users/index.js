@@ -13,8 +13,13 @@ const usersCollection = getCollection(collectionNames.USER);
 
 async function handleLogin(req, res) {
   try {
-    const reqData = req.body;
-    console.log("reqData", reqData);
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
 
     const user = await usersCollection.findOne(reqData);
     if (!user) {
@@ -40,24 +45,27 @@ async function handleLogin(req, res) {
 
 async function handleRegister(req, res) {
   try {
-    const reqData = req.body;
+    const { username, password } = req.body;
+    if (!username || !password) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
 
     //check exist user
-    const user = await usersCollection.findOne({ username: reqData.username });
-
+    const user = await usersCollection.findOne({ username: username});
     if (user) {
       res.statusCode = httpStatusCodes.CONFLICT;
       res.end("Username already exist");
       return;
     }
 
-    const token = encodeToken(reqData.username);
-    const newUser = {
-      ...reqData,
-      token: token,
-    };
+    const result = await usersCollection.insertOne({
+      username: username,
+      password: password,
+      token: encodeToken(reqData.username),
+    });
 
-    const result = await usersCollection.insertOne(newUser);
     if (result.insertedId) {
       res.statusCode = httpStatusCodes.CREATED;
       res.end();
