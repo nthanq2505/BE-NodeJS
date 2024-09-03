@@ -1,18 +1,20 @@
-const { encodeToken, getDataFromRequest, getCollection } = require("../helper");
+const { encodeToken, getCollection } = require("../../helpers");
 const {
-  apiRoot,
   httpStatusCodes,
-  httpMethods,
-  databaseName,
-  uriMongo,
   collectionNames,
+  // CAN USE IN FUTURE
+  // apiRoot,
+  // httpMethods,
+  // databaseName,
+  // uriMongo,
 } = require("../../utils/constants");
 
 const usersCollection = getCollection(collectionNames.USER);
 
 async function handleLogin(req, res) {
   try {
-    const reqData = await getDataFromRequest(req);
+    const reqData = req.body;
+    console.log("reqData", reqData);
 
     const user = await usersCollection.findOne(reqData);
     if (!user) {
@@ -38,12 +40,12 @@ async function handleLogin(req, res) {
 
 async function handleRegister(req, res) {
   try {
-    const reqData = await getDataFromRequest(req);
+    const reqData = req.body;
 
     //check exist user
-    const user = await usersCollection.findOne({username: reqData.username});
+    const user = await usersCollection.findOne({ username: reqData.username });
 
-    if(user){
+    if (user) {
       res.statusCode = httpStatusCodes.CONFLICT;
       res.end("Username already exist");
       return;
@@ -54,9 +56,9 @@ async function handleRegister(req, res) {
       ...reqData,
       token: token,
     };
-    
-    const result = await usersCollection.insertOne(newUser)
-    if(result.insertedId){
+
+    const result = await usersCollection.insertOne(newUser);
+    if (result.insertedId) {
       res.statusCode = httpStatusCodes.CREATED;
       res.end();
       return;

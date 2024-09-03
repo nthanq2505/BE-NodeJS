@@ -1,24 +1,36 @@
 const { httpMethods } = require("../utils/constants");
 
+function runMiddlewares(req, res, middlewares, callback) {
+  let promise = middlewares[0](req, res);
+  for (let i = 1; i < middlewares.length; i++) {
+    promise = promise.then(() => middlewares[i](req, res));
+  }
+  promise.finally(() => {
+    callback(req, res);
+  });
+  return promise;
+}
+
 const routerMethods = {
-  get: function (req, res, path, callback) {
+  get: function (req, res, path, middlewares, callback) {
     if (path === req.url && req.method === httpMethods.GET) {
-      callback(req, res);
+      runMiddlewares(req, res, middlewares, callback);
     }
   },
-  post: function (req, res, path, callback) {
+  post: function (req, res, path, middlewares, callback) {
     if (path === req.url && req.method === httpMethods.POST) {
-      callback(req, res);
+      runMiddlewares(req, res, middlewares, callback);
+      
     }
   },
-  put: function (req, res, path, callback) {
+  put: function (req, res, path, middlewares, callback) {
     if (path === req.url && req.method === httpMethods.PUT) {
-      callback(req, res);
+      runMiddlewares(req, res, middlewares, callback);
     }
   },
-  delete: function (req, res, path, callback) {
+  delete: function (req, res, path, middlewares, callback) {
     if (path === req.url && req.method === httpMethods.DELETE) {
-      callback(req, res);
+      runMiddlewares(req, res, middlewares, callback);
     }
   },
 };
