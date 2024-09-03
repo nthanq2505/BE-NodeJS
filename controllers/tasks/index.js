@@ -1,41 +1,22 @@
 const {
-  apiRoot,
   httpStatusCodes,
-  httpMethods,
   collectionNames,
-  databaseName,
-  uriMongo,
+  // CAN USE IN FUTURE
+  // apiRoot,
+  // httpMethods,
+  // databaseName,
+  // uriMongo,
 } = require("../../utils/constants");
-const {
-  secretKey,
-  decodeToken,
-  generateId,
-  getDataFromRequest,
-  authorizeUserFromRequest,
-  getCollection,
-} = require("../helper");
+const { decodeToken, getCollection } = require("../../helpers");
 
 const usersCollection = getCollection(collectionNames.USER);
 const tasksCollection = getCollection(collectionNames.TASK);
 
 async function handleAddTask(req, res) {
   try {
-    const body = await getDataFromRequest(req);
-    const { task } = body;
-    
-    const username = authorizeUserFromRequest(req);
-    if (!username) {
-      res.statusCode = httpStatusCodes.UNAUTHORIZED;
-      res.end("Unauthorized: No token provided");
-      return;
-    }
-    const user = await usersCollection.findOne({ username: username });
-
-    if (!user) {
-      res.statusCode = httpStatusCodes.UNAUTHORIZED;
-      res.end("Unauthorized: Invalid user");
-      return;
-    }
+    const { task } = req.body;
+    const user = req.user;
+    console.log("user", user);
 
     const newTask = {
       ...task,
@@ -56,28 +37,7 @@ async function handleAddTask(req, res) {
 
 async function handleGetTasksByUser(req, res) {
   try {
-    const bearerToken =
-      req.headers.authorization && req.headers.authorization.split(" ")[1];
-    if (!bearerToken) {
-      res.statusCode = httpStatusCodes.UNAUTHORIZED;
-      res.end("Unauthorized: No token provided");
-      return;
-    }
-
-    const [username, secretKeyFromToken] = decodeToken(bearerToken).split(":");
-
-    if (secretKeyFromToken !== secretKey) {
-      res.statusCode = httpStatusCodes.UNAUTHORIZED;
-      res.end("Unauthorized: Invalid token");
-      return;
-    }
-
-    const user = await usersCollection.findOne({username});
-    if (!user) {
-      res.statusCode = httpStatusCodes.UNAUTHORIZED;
-      res.end("Unauthorized: Invalid user");
-      return;
-    }
+    const user = req.user;
 
     const tasks = await tasksCollection.find({ ownerId: user._id }).toArray();
 
