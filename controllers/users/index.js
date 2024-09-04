@@ -21,7 +21,10 @@ async function handleLogin(req, res) {
       return;
     }
 
-    const user = await usersCollection.findOne(reqData);
+    const user = await usersCollection.findOne({
+      username: username,
+      password: password,
+    });
     if (!user) {
       res.statusCode = httpStatusCodes.NOT_FOUND;
       res.end("404 Not Found");
