@@ -5,6 +5,7 @@ const {
 const { 
   getCollection 
 } = require("../../helpers");
+const { ObjectId } = require("mongodb");
 
 const tasksCollection = getCollection(collectionNames.TASK);
 
@@ -59,44 +60,45 @@ async function handleGetTasksByUser(req, res) {
 
 async function handleUpdateTask(req, res) {
   try {
-    // const bearerToken =
-    //   req.headers.authorization && req.headers.authorization.split(" ")[1];
-
+    const user = req.user
+    const body = req.body
+    console.log(user)
     // if (!bearerToken) {
-    //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
-    //   res.end("Unauthorized");
-    //   return;
-    // }
+    if (!body.task) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
 
-    // const secretKeyFromToken = decodeToken(bearerToken).split(":")[1];
-    // if (secretKeyFromToken !== secretKey) {
-    //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
-    //   res.end("Unauthorized: Invalid token");
-    //   return;
-    // }
+    if (!body.task.id) {
+      if (!body.task.name && !body.task.isDone) {
+        res.statusCode = httpStatusCodes.BAD_REQUEST;
+        res.end("400 Bad Request");
+        return;
+      }
+    }
 
-    // const updateTask = await getDataFromRequest(req);
+    const result = await tasksCollection.updateOne(
+      { 
+        _id: new ObjectId(body.task.id),
+        ownerId: user._id 
+      },
+      { 
+        $set: { 
+          ...body.task
+        }
+      }
+    );
 
-    // const updateResponse = await fetch(`${apiRoot}/api/update`, {
-    //   method: httpMethods.PUT,
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({
-    //     collection: collectionNames.TASK,
-    //     filter: { id: updateTask.id },
-    //     update: updateTask,
-    //   }),
-    // });
-
-    // if (updateResponse.status !== httpStatusCodes.NO_CONTENT) {
-    //   res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
-    //   res.end("Internal Server Error");
-    //   return;
-    // }
+    if (result.modifiedCount === 0) {
+      res.statusCode = httpStatusCodes.NOT_FOUND;
+      res.end();
+      return;
+    }
 
     res.statusCode = httpStatusCodes.NO_CONTENT;
     res.end();
+    return;
   } catch (error) {
     console.error("Error handling update task:", error);
     res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
