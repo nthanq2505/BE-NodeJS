@@ -63,7 +63,7 @@ async function handleUpdateTask(req, res) {
     const user = req.user
     const body = req.body
     console.log(user)
-    // if (!bearerToken) {
+    console.log(body)
     if (!body.task) {
       res.statusCode = httpStatusCodes.BAD_REQUEST;
       res.end("400 Bad Request");
@@ -95,7 +95,6 @@ async function handleUpdateTask(req, res) {
       res.end();
       return;
     }
-
     res.statusCode = httpStatusCodes.NO_CONTENT;
     res.end();
     return;
@@ -107,70 +106,28 @@ async function handleUpdateTask(req, res) {
 }
 
 async function handleDeleteTaskById(req, res) {
-  // const body = await getDataFromRequest(req);
-  // taskId = body.id;
+  try {
+    const user = req.user;
+    const taskId = req.body.id;
 
-  // const bearerToken =
-  //   req.headers.authorization && req.headers.authorization.split(" ")[1];
-  // if (!bearerToken) {
-  //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
-  //   res.end("Unauthorized");
-  //   return;
-  // }
+    const result = await tasksCollection.deleteOne({
+      _id: new ObjectId(taskId),
+      ownerId: user._id,
+    });
 
-  // if (!taskId) {
-  //   res.statusCode = httpStatusCodes.NOT_FOUND;
-  //   res.end("Invalid task id");
-  //   return;
-  // }
+    if (result.deletedCount === 0) {
+      res.statusCode = httpStatusCodes.NOT_FOUND;
+      res.end();
+      return;
+    }
 
-  // const secretKeyFromToken = decodeToken(bearerToken).split(":")[1];
-  // if (secretKeyFromToken !== secretKey) {
-  //   res.statusCode = httpStatusCodes.UNAUTHORIZED;
-  //   res.end("Unauthorized: Invalid token");
-  //   return;
-  // }
-
-  // const taskResponse = await fetch(`${apiRoot}/api/read`, {
-  //   method: httpMethods.POST,
-  //   headers: {
-  //     "Content-Type": "application/json",
-  //   },
-  //   body: JSON.stringify({
-  //     collection: "task",
-  //     filter: {
-  //       id: taskId,
-  //     },
-  //   }),
-  // });
-
-  // const task = await taskResponse.json();
-
-  // if (task.length === 0) {
-  //   res.statusCode = httpStatusCodes.NOT_FOUND;
-  //   res.end();
-  //   return;
-  // }
-
-  // const res = await fetch(`${apiRoot}/api/delete`, {
-  //   method: httpMethods.DELETE,
-  //   headers: {
-  //     "Content-Type": "application/json",
-  //   },
-  //   body: JSON.stringify({
-  //     collection: "task",
-  //     filter: {
-  //       id: taskId,
-  //     },
-  //   }),
-  // });
-  // if (res.status !== httpStatusCodes.NO_CONTENT) {
-  //   res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
-  //   res.end();
-  //   return;
-  // }
-  res.statusCode = httpStatusCodes.NO_CONTENT;
-  res.end();
+    res.statusCode = httpStatusCodes.NO_CONTENT;
+    res.end();
+  } catch (error) {
+    console.error("Error handling delete task by id:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
+  }
 }
 
 module.exports = {
