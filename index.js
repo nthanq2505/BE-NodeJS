@@ -1,22 +1,25 @@
-const { createServer } = require('node:http');
-const router = require('./routers');
+const { createServer } = require("node:http");
+const router = require("./routers");
 
-const hostname = '127.0.0.1';
+const hostname = "127.0.0.1";
 const port = 3000;
 
-const server = createServer((request, response) => {
-    response.setHeader('Access-Control-Allow-Origin', '*'); 
-    response.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+const server = createServer((req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-    if (request.method === 'OPTIONS') {
-        response.writeHead(204);
-        response.end();
-        return;
-    }
-    router.run(request, response);
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+  router.run(req, res);
 });
 
 server.listen(port, hostname, () => {
-    console.log(`Server running at http://${hostname}:${port}`);
+  console.log(`Server running at http://${hostname}:${port}`);
 });

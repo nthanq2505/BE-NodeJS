@@ -1,232 +1,138 @@
 const {
-  apiRoot,
   httpStatusCodes,
-  httpMethods,
-  collectionNames
-} = require('../../utils/constants')
-const {
-  secretKey,
-  decodeToken,
-  generateId,
-  getDataFromRequest
-} = require('../helper')
+  collectionNames,
+} = require("../../utils/constants");
+const { 
+  getCollection 
+} = require("../../helpers");
+const { ObjectId } = require("mongodb");
 
-async function handleAddTask (request, response) {
+const tasksCollection = getCollection(collectionNames.TASK);
+
+async function handleAddTask(req, res) {
   try {
-    const body = await getDataFromRequest(request)
-    const { task, username } = body
+    const { task } = req.body;
+    const user = req.user;
 
-    const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
-
-    if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: No token provided')
-      return
-    }
-    const [userId, secretKeyFromToken] = decodeToken(bearerToken).split(':')
-
-    if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
+    if (!task) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
     }
 
-    const newTask = {
+    if (!task.name || !task.isDone) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
+    }
+
+    const result = await tasksCollection.insertOne({
       ...task,
-      ownerId: userId,
-      id: generateId()
-    }
+      ownerId: user._id,
+    });
 
-    const result = await fetch(`${apiRoot}/api/create`, {
-      method: httpMethods.POST,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        record: newTask
-      })
-    })
-
-    if (result.status !== httpStatusCodes.CREATED) {
-      response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-      response.end('Failed to create task')
-      return
-    }
-
-    response.statusCode = httpStatusCodes.CREATED
-    response.setHeader('Content-Type', 'application/json')
-    response.end(JSON.stringify(newTask))
+    res.statusCode = httpStatusCodes.CREATED;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(result));
   } catch (error) {
-    console.error('Error handling task creation:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling task creation:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleGetTasksByUser (request, response) {
+async function handleGetTasksByUser(req, res) {
   try {
-    const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
-    if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: No token provided')
-      return
-    }
+    const user = req.user;
+    const tasks = await tasksCollection.find({ 
+      ownerId: user._id 
+    }).toArray();
 
-    const [idUser, secretKeyFromToken] = decodeToken(bearerToken).split(':')
-
-    if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
-    }
-
-    const tasksResponse = await fetch(`${apiRoot}/api/read`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        filter: { ownerId: string(idUser) }
-      })
-    })
-
-    const tasks = await tasksResponse.json()
-
-    response.statusCode = httpStatusCodes.OK
-    response.setHeader('Content-Type', 'application/json')
-    response.end(JSON.stringify(tasks))
+    res.statusCode = httpStatusCodes.OK;
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify(tasks));
   } catch (error) {
-    console.error('Error handling get tasks by user:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling get tasks by user:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleUpdateTask (request, response) {
+async function handleUpdateTask(req, res) {
   try {
-    const bearerToken =
-      request.headers.authorization &&
-      request.headers.authorization.split(' ')[1]
-
-    if (!bearerToken) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized')
-      return
+    const user = req.user
+    const body = req.body
+    console.log(user)
+    console.log(body)
+    if (!body.task) {
+      res.statusCode = httpStatusCodes.BAD_REQUEST;
+      res.end("400 Bad Request");
+      return;
     }
 
-    const secretKeyFromToken = decodeToken(bearerToken).split(':')[1]
-    if (secretKeyFromToken !== secretKey) {
-      response.statusCode = httpStatusCodes.UNAUTHORIZED
-      response.end('Unauthorized: Invalid token')
-      return
+    if (!body.task.id) {
+      if (!body.task.name && !body.task.isDone) {
+        res.statusCode = httpStatusCodes.BAD_REQUEST;
+        res.end("400 Bad Request");
+        return;
+      }
     }
 
-    const updateTask = await getDataFromRequest(request)
-
-    const updateResponse = await fetch(`${apiRoot}/api/update`, {
-      method: httpMethods.PUT,
-      headers: {
-        'Content-Type': 'application/json'
+    const result = await tasksCollection.updateOne(
+      { 
+        _id: new ObjectId(body.task.id),
+        ownerId: user._id 
       },
-      body: JSON.stringify({
-        collection: collectionNames.TASK,
-        filter: { id: updateTask.id },
-        update: updateTask
-      })
-    })
+      { 
+        $set: { 
+          ...body.task
+        }
+      }
+    );
 
-    if (updateResponse.status !== httpStatusCodes.NO_CONTENT) {
-      response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-      response.end('Internal Server Error')
-      return
+    if (result.modifiedCount === 0) {
+      res.statusCode = httpStatusCodes.NOT_FOUND;
+      res.end();
+      return;
     }
-
-    response.statusCode = httpStatusCodes.NO_CONTENT
-    response.end()
+    res.statusCode = httpStatusCodes.NO_CONTENT;
+    res.end();
+    return;
   } catch (error) {
-    console.error('Error handling update task:', error)
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end('Internal Server Error')
+    console.error("Error handling update task:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
 }
 
-async function handleDeleteTaskById (request, response) {
-  const body = await getDataFromRequest(request)
-  taskId = body.id
-  
-  const bearerToken =
-    request.headers.authorization && request.headers.authorization.split(' ')[1]
-  if (!bearerToken) {
-    response.statusCode = httpStatusCodes.UNAUTHORIZED
-    response.end('Unauthorized')
-    return
+async function handleDeleteTaskById(req, res) {
+  try {
+    const user = req.user;
+    const taskId = req.body.id;
+
+    const result = await tasksCollection.deleteOne({
+      _id: new ObjectId(taskId),
+      ownerId: user._id,
+    });
+
+    if (result.deletedCount === 0) {
+      res.statusCode = httpStatusCodes.NOT_FOUND;
+      res.end();
+      return;
+    }
+
+    res.statusCode = httpStatusCodes.NO_CONTENT;
+    res.end();
+  } catch (error) {
+    console.error("Error handling delete task by id:", error);
+    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR;
+    res.end("Internal Server Error");
   }
-
-  if(!taskId){
-    response.statusCode = httpStatusCodes.NOT_FOUND
-    response.end('Invalid task id')
-    return
-  }
-
-  const secretKeyFromToken = decodeToken(bearerToken).split(':')[1]
-  if (secretKeyFromToken !== secretKey) {
-    response.statusCode = httpStatusCodes.UNAUTHORIZED
-    response.end('Unauthorized: Invalid token')
-    return
-  }
-
-  const taskResponse = await fetch(`${apiRoot}/api/read`, {
-    method: httpMethods.POST,
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      collection: 'task',
-      filter: {
-        id: taskId
-      }
-    })
-  })
-
-  const task = await taskResponse.json()
-
-
-  if (task.length === 0) {
-    response.statusCode = httpStatusCodes.NOT_FOUND
-    response.end()
-    return
-  }
-
-  const res = await fetch(`${apiRoot}/api/delete`, {
-    method: httpMethods.DELETE,
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      collection: 'task',
-      filter: {
-        id: taskId
-      }
-    })
-  })
-  if (res.status !== httpStatusCodes.NO_CONTENT) {
-    response.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    response.end()
-    return
-  }
-  response.statusCode = httpStatusCodes.NO_CONTENT
-  response.end()
 }
 
 module.exports = {
   handleAddTask,
   handleUpdateTask,
   handleGetTasksByUser,
-  handleDeleteTaskById
-}
+  handleDeleteTaskById,
+};

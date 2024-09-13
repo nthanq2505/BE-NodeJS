@@ -1,0 +1,19 @@
+{
+  "name": "be-nodejs",
+  "version": "1.0.0",
+  "description": "- Controller là nơi chứa các hàm xử lý logic của ứng dụng.\r - Controller sẽ nhận req từ client thông qua router, sau đó xử lý req đó và trả về res cho client.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "6.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

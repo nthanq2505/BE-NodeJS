@@ -1,4 +1,6 @@
 const apiRoot = 'http://127.0.0.1:8080'
+const uriMongo = "mongodb+srv://nqthang:123@mongodb.ksg90.mongodb.net/";
+const databaseName = 'todo_app'
 
 const httpMethods = {
   POST: 'POST',
@@ -19,9 +21,18 @@ const httpStatusCodes = {
 }
 
 const collectionNames = {
-  TASK :'task',
-  USER : 'user'
+  TASK :'tasks',
+  USER : 'users'
 }
 
+const secretKey = "secretKey";
 
-module.exports = { apiRoot, httpMethods, httpStatusCodes, collectionNames }
+module.exports = { 
+  apiRoot, 
+  httpMethods, 
+  httpStatusCodes, 
+  collectionNames, 
+  uriMongo, 
+  databaseName,
+  secretKey
+}
