@@ -31,7 +31,7 @@ const userRouter = {
       req,
       res,
       routes.task.deleteTask.value,
-      [authentication, getDataFromBody],
+      [authentication],
       taskController.handleDeleteTaskById
     );
   },
