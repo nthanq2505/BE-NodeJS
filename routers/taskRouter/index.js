@@ -4,7 +4,7 @@ const { getDataFromBody, authentication } = require("../../middlewares/index.js"
 
 const taskController = require("../../controllers/index.js");
 
-const userRouter = {
+const taskRouter = {
   run(req, res) {
     routerMethods.get(
       req,
@@ -37,4 +37,4 @@ const userRouter = {
   },
 };
 
-module.exports = userRouter;
+module.exports = taskRouter;

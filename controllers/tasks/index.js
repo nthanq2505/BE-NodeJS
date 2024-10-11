@@ -1,52 +1,82 @@
 const { httpStatusCodes, collectionNames } = require('../../utils/constants')
 const { getCollection } = require('../../helpers')
 const { ObjectId } = require('mongodb')
-
+const { sendResponse } = require('../../utils/helpers')
+const url = require('url');
 const tasksCollection = getCollection(collectionNames.TASK)
 
-async function handleAddTask(req, res) {
+async function handleAddTask (req, res) {
   try {
     const task = req.body
     const user = req.user
 
     if (!task || !task?.name) {
-      res.statusCode = httpStatusCodes.BAD_REQUEST
-      res.end('400 Bad Request')
-      return
+      return sendResponse(
+        res,
+        httpStatusCodes.BAD_REQUEST,
+        'error',
+        'Incorrect task information . Please try again'
+      )
     }
 
-    const result = await tasksCollection.insertOne({
+    await tasksCollection.insertOne({
       ...task,
       isDone: false,
       ownerId: user._id
     })
 
-    res.statusCode = httpStatusCodes.CREATED
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(result))
+    return sendResponse(
+      res,
+      httpStatusCodes.CREATED,
+      'success',
+      'Create task successfully'
+    )
   } catch (error) {
-    console.error('Error handling task creation:', error)
-    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    res.end('Internal Server Error')
+    return sendResponse(
+      res,
+      httpStatusCodes.INTERNAL_SERVER_ERROR,
+      'error',
+      'Internal Server Error'
+    )
   }
 }
 
 async function handleGetTasksByUser (req, res) {
   try {
     const user = req.user
+    const parsedUrl = url.parse(req.url, true)
+    const { query } = parsedUrl
+
+    const filter = {
+      ownerId: user._id
+    }
+
+    if (query.isDone === 'done') {
+      filter.isDone = true; 
+    } else if (query.isDone === 'not_done') {
+      filter.isDone = false; 
+    }
+
+
     const tasks = await tasksCollection
-      .find({
-        ownerId: user._id
-      })
+      .find(filter)
       .toArray()
 
-    res.statusCode = httpStatusCodes.OK
-    res.setHeader('Content-Type', 'application/json')
-    res.end(JSON.stringify(tasks))
+    return sendResponse(
+      res,
+      httpStatusCodes.OK,
+      'success',
+      'Get tasks successfully',
+      tasks
+    )
   } catch (error) {
-    console.error('Error handling get tasks by user:', error)
-    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    res.end('Internal Server Error')
+    console.error(error)
+    return sendResponse(
+      res,
+      httpStatusCodes.INTERNAL_SERVER_ERROR,
+      'error',
+      'Internal Server Error'
+    )
   }
 }
 
@@ -73,11 +103,6 @@ async function handleUpdateTask (req, res) {
       }
     )
 
-    if (result.modifiedCount === 0) {
-      res.statusCode = httpStatusCodes.NOT_FOUND
-      res.end()
-      return
-    }
     res.statusCode = httpStatusCodes.NO_CONTENT
     res.end()
     return

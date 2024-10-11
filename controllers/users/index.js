@@ -52,6 +52,7 @@ async function handleLogin (req, res) {
       'success',
       'Login successfully',
       {
+        fullName: user.fullName,
         email: user.email,
         token: user.token
       }

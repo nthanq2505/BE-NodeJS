@@ -1,7 +1,7 @@
 const { createServer } = require("node:http");
 const router = require("./routers");
 
-const hostname = "127.0.0.1";
+const hostname = "192.168.68.141";
 const port = 8000;
 
 const server = createServer((req, res) => {
