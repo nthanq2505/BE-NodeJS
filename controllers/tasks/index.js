@@ -2,7 +2,7 @@ const { httpStatusCodes, collectionNames } = require('../../utils/constants')
 const { getCollection } = require('../../helpers')
 const { ObjectId } = require('mongodb')
 const { sendResponse } = require('../../utils/helpers')
-const url = require('url');
+const url = require('url')
 const tasksCollection = getCollection(collectionNames.TASK)
 
 async function handleAddTask (req, res) {
@@ -52,15 +52,12 @@ async function handleGetTasksByUser (req, res) {
     }
 
     if (query.isDone === 'done') {
-      filter.isDone = true; 
+      filter.isDone = true
     } else if (query.isDone === 'not_done') {
-      filter.isDone = false; 
+      filter.isDone = false
     }
 
-
-    const tasks = await tasksCollection
-      .find(filter)
-      .toArray()
+    const tasks = await tasksCollection.find(filter).toArray()
 
     return sendResponse(
       res,
@@ -90,7 +87,7 @@ async function handleUpdateTask (req, res) {
       return
     }
 
-    const result = await tasksCollection.updateOne(
+    await tasksCollection.updateOne(
       {
         _id: new ObjectId(task._id),
         ownerId: new ObjectId(task.ownerId)
@@ -108,8 +105,12 @@ async function handleUpdateTask (req, res) {
     return
   } catch (error) {
     console.error('Error handling update task:', error)
-    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    res.end('Internal Server Error')
+    return sendResponse(
+      res,
+      httpStatusCodes.INTERNAL_SERVER_ERROR,
+      'error',
+      'Internal Server Error'
+    )
   }
 }
 
@@ -140,8 +141,12 @@ async function handleDeleteTaskById (req, res) {
     res.end()
   } catch (error) {
     console.error('Error handling delete task by id:', error)
-    res.statusCode = httpStatusCodes.INTERNAL_SERVER_ERROR
-    res.end('Internal Server Error')
+    return sendResponse(
+      res,
+      httpStatusCodes.INTERNAL_SERVER_ERROR,
+      'error',
+      'Internal Server Error'
+    )
   }
 }
 
