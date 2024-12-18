@@ -19,6 +19,9 @@ module.exports = {
     },
     register: {
       value: '/api/register'
+    },
+    ping: {
+      value: '/api/ping'
     }
   }
 }

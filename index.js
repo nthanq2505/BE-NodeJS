@@ -1,8 +1,8 @@
 const { createServer } = require("node:http");
 const router = require("./routers");
 
-const hostname = "192.168.68.141";
-const port = 8000;
+const hostname = "localhost";
+const port = 3002;
 
 const server = createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");

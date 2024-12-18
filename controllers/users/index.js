@@ -12,6 +12,11 @@ const { sendResponse } = require('../../utils/helpers')
 
 const usersCollection = getCollection(collectionNames.USER)
 
+async function handlePing(req, res) {
+  res.writeHead(200);
+  res.end("pong");
+}
+
 async function handleLogin (req, res) {
   try {
     const { email, password } = req.body
@@ -118,5 +123,6 @@ async function handleRegister (req, res) {
 
 module.exports = {
   handleLogin,
-  handleRegister
+  handleRegister,
+  handlePing
 }
