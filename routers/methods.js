@@ -1,6 +1,10 @@
   const { httpMethods } = require('../utils/constants')
 
   function runMiddlewares (req, res, middlewares, callback) {
+    if (middlewares.length === 0) {
+      callback(req, res)
+      return
+    }
     let promise = middlewares[0](req, res)
     for (let i = 1; i < middlewares.length; i++) {
       promise = promise.then(() => middlewares[i](req, res))

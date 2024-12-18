@@ -20,6 +20,13 @@ const userRouter = {
       [getDataFromBody],
       userController.handleRegister
     );
+    routerMethods.get(
+      req,
+      res,
+      routes.user.ping.value,
+      [],
+      userController.handlePing
+    );
   },
 };
 
